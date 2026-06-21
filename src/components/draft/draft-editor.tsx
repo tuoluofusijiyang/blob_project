@@ -255,9 +255,11 @@ export function DraftEditor({
   }
 
   async function copyAsRichText() {
+    // 清理 [[IMG: ...]] 占位符（未替换成图片的占位符不能带出去）
+    const cleanedContent = content.replace(/\[\[IMG:[^\]]*\]\]\s*/g, '');
     // 把 markdown 通过 marked 渲染成 HTML，加上主题 inline 样式，复制为富文本
     const { marked } = await import('marked');
-    const html = marked.parse(content || '', { async: false }) as string;
+    const html = marked.parse(cleanedContent || '', { async: false }) as string;
     const styledHtml = injectInlineStyles(html, theme, initialPlatform);
 
     // 复制为富文本（HTML + 纯文本双通道）
@@ -265,7 +267,7 @@ export function DraftEditor({
       if (navigator.clipboard && (window as any).ClipboardItem) {
         const item = new (window as any).ClipboardItem({
           'text/html': new Blob([styledHtml], { type: 'text/html' }),
-          'text/plain': new Blob([content], { type: 'text/plain' }),
+          'text/plain': new Blob([cleanedContent], { type: 'text/plain' }),
         });
         await navigator.clipboard.write([item]);
       } else {
@@ -292,7 +294,9 @@ export function DraftEditor({
   }
 
   async function copyAsMarkdown() {
-    await navigator.clipboard.writeText(content);
+    // 清理 [[IMG: ...]] 占位符（未替换成图片的占位符不能带出去）
+    const cleaned = content.replace(/\[\[IMG:[^\]]*\]\]\s*/g, '');
+    await navigator.clipboard.writeText(cleaned);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }

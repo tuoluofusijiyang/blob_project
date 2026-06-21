@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { marked } from 'marked';
+import { Marked } from 'marked';
 import { markedHighlight } from 'marked-highlight';
 import hljs from 'highlight.js/lib/core';
 import javascript from 'highlight.js/lib/languages/javascript';
@@ -35,13 +35,11 @@ hljs.registerLanguage('sql', sql);
 hljs.registerLanguage('yaml', yaml);
 hljs.registerLanguage('yml', yaml);
 
-const renderer = new marked.Renderer();
-renderer.link = ({ href, title, text }) => {
-  const t = title ? ` title="${title}"` : '';
-  return `<a href="${href}"${t} target="_blank" rel="noopener noreferrer">${text}</a>`;
-};
-
-marked.use(
+// marked v18 兼容：必须用 new Marked(markedHighlight(...)) 实例化
+// 否则 marked.use(markedHighlight({langPrefix})) 在 v18 下不生效，
+// 会输出 <code class="language-xxx"> 而非 <code class="hljs language-xxx">，
+// 导致 pre code.hljs 的 CSS 全部失效
+const marked = new Marked(
   markedHighlight({
     langPrefix: 'hljs language-',
     highlight(code, lang) {
@@ -51,7 +49,6 @@ marked.use(
         }
         return hljs.highlightAuto(code).value;
       } catch {
-        // 极端兜底：原样转义后返回，绝不让单个代码块炸掉整篇文章
         return code
           .replace(/&/g, '&amp;')
           .replace(/</g, '&lt;')
@@ -60,7 +57,14 @@ marked.use(
     },
   })
 );
-marked.setOptions({ renderer, gfm: true, breaks: false });
+
+const renderer = new marked.Renderer();
+renderer.link = ({ href, title, text }) => {
+  const t = title ? ` title="${title}"` : '';
+  return `<a href="${href}"${t} target="_blank" rel="noopener noreferrer">${text}</a>`;
+};
+
+marked.use({ renderer, gfm: true, breaks: false });
 
 export type PreviewTheme =
   | 'paper'
@@ -135,8 +139,8 @@ export const THEME_PROFILES: Record<PreviewTheme, ThemeProfile> = {
     p: 'margin:0.9rem 0; line-height:1.85; text-align:justify; text-indent:2em;',
     blockquote: 'border-left:4px double #a04825; padding:0.5rem 1rem 0.5rem 1.25rem; margin:1.5rem 0; font-style:italic; font-family:Georgia,serif; background:rgba(160,72,37,0.06); color:#5a4533; position:relative;',
     code: 'font-family:"Courier New","Courier",monospace; background:#ede4cc; color:#3a2f24; padding:0.1rem 0.4rem; border-radius:3px; font-size:0.9em; border:1px solid #d4c9a8;',
-    pre: 'margin:1.5rem 0; padding:0; border-radius:6px; background:#2d2418; overflow:hidden;',
-    preCode: 'color:#e8d9b8; padding:1rem 1.25rem; font-family:"Courier New",Consolas,monospace; font-size:0.9rem; line-height:1.7; display:block; overflow-x:auto;',
+    pre: 'margin:1.5rem 0; padding:0; border-radius:6px; background:#2d2418; overflow-x:auto; overflow-y:hidden;',
+    preCode: 'color:#e8d9b8; padding:1rem 1.25rem; font-family:"Courier New",Consolas,monospace; font-size:0.9rem; line-height:1.7; display:block;',
     ul: 'padding-left:2rem; margin:1rem 0; list-style-type:square;',
     ol: 'padding-left:2rem; margin:1rem 0; list-style-type:upper-roman;',
     li: 'margin:0.4rem 0; line-height:1.8;',
@@ -171,10 +175,10 @@ export const THEME_PROFILES: Record<PreviewTheme, ThemeProfile> = {
     p: 'margin:1rem 0; line-height:1.95; text-indent:2em;',
     blockquote: 'border-left:4px solid #07c160; padding:0.6rem 1rem; margin:1.25rem 0; background:rgba(7,193,96,0.06); border-radius:0 4px 4px 0; color:#353535;',
     code: 'background:#f5f5f5; color:#d73a49; padding:0.15rem 0.4rem; border-radius:3px; font-size:0.875em; font-family:ui-monospace,"SF Mono",Consolas,monospace; border:1px solid #e8e8e8;',
-    pre: 'margin:1.25rem 0; padding:0; border-radius:6px; background:#f5f5f5; overflow:hidden;',
-    preCode: 'color:#353535; padding:1rem 1.25rem; font-family:ui-monospace,"SF Mono",Consolas,monospace; font-size:0.875rem; line-height:1.65; display:block; overflow-x:auto;',
-    ul: 'padding-left:1.75rem; margin:1rem 0;',
-    ol: 'padding-left:1.75rem; margin:1rem 0;',
+    pre: 'margin:1.25rem 0; padding:0; border-radius:6px; background:#f5f5f5; overflow-x:auto; overflow-y:hidden;',
+    preCode: 'color:#353535; padding:1rem 1.25rem; font-family:ui-monospace,"SF Mono",Consolas,monospace; font-size:0.875rem; line-height:1.65; display:block;',
+    ul: 'padding-left:1.75rem; margin:1rem 0; list-style-type:disc;',
+    ol: 'padding-left:1.75rem; margin:1rem 0; list-style-type:decimal;',
     li: 'margin:0.4rem 0; line-height:1.85;',
     table: 'border-collapse:collapse; width:100%; margin:1rem 0; border:1px solid #e0e0e0; font-size:0.95em;',
     th: 'border:1px solid #e0e0e0; padding:0.6rem 0.85rem; text-align:left; background:#f0faf4; color:#07c160; font-weight:600;',
@@ -207,10 +211,10 @@ export const THEME_PROFILES: Record<PreviewTheme, ThemeProfile> = {
     p: 'margin:0.9rem 0; line-height:1.85;',
     blockquote: 'border-left:5px solid #ff2442; padding:0.7rem 1rem 0.7rem 1.2rem; margin:1.25rem 0; background-color:#fff5f7; border-radius:0 12px 12px 0; color:#2d2d2d;',
     code: 'background:#fff5f7; color:#ff2442; padding:0.15rem 0.45rem; border-radius:6px; font-size:0.875em; font-family:ui-monospace,monospace; border:1px solid #ffd6e0;',
-    pre: 'margin:1.25rem 0; padding:0; border-radius:12px; background:#fff5f7; border:1.5px dashed #ffc0cb; overflow:hidden;',
-    preCode: 'color:#2d2d2d; padding:1rem 1.25rem; font-family:ui-monospace,monospace; font-size:0.85rem; line-height:1.65; display:block; overflow-x:auto;',
-    ul: 'padding-left:1.5rem; margin:1rem 0;',
-    ol: 'padding-left:1.5rem; margin:1rem 0;',
+    pre: 'margin:1.25rem 0; padding:0; border-radius:12px; background:#fff5f7; border:1.5px dashed #ffc0cb; overflow-x:auto; overflow-y:hidden;',
+    preCode: 'color:#2d2d2d; padding:1rem 1.25rem; font-family:ui-monospace,monospace; font-size:0.85rem; line-height:1.65; display:block;',
+    ul: 'padding-left:1.5rem; margin:1rem 0; list-style-type:disc;',
+    ol: 'padding-left:1.5rem; margin:1rem 0; list-style-type:decimal;',
     li: 'margin:0.4rem 0; line-height:1.75;',
     table: 'border-collapse:separate; border-spacing:0; width:100%; margin:1rem 0; border:1.5px solid #ffc0cb; border-radius:10px; font-size:0.95em; overflow:hidden;',
     th: 'border-bottom:1.5px solid #ffc0cb; padding:0.6rem 0.85rem; text-align:left; background:#fff0f3; color:#ff2442; font-weight:700;',
@@ -243,10 +247,10 @@ export const THEME_PROFILES: Record<PreviewTheme, ThemeProfile> = {
     p: 'margin:0.75rem 0; line-height:1.7;',
     blockquote: 'border-left:3px solid #e9e9e7; padding:0.25rem 0 0.25rem 1rem; margin:1rem 0; color:#787774;',
     code: 'background:#f7f6f3; color:#eb5757; padding:0.15rem 0.4rem; border-radius:3px; font-size:0.875em; font-family:ui-monospace,SFMono-Regular,monospace;',
-    pre: 'margin:1rem 0; padding:0; border-radius:4px; background:#f7f6f3; overflow:hidden;',
-    preCode: 'color:#37352f; padding:0.85rem 1rem; font-family:ui-monospace,SFMono-Regular,monospace; font-size:0.85rem; line-height:1.6; display:block; overflow-x:auto;',
-    ul: 'padding-left:1.5rem; margin:0.75rem 0;',
-    ol: 'padding-left:1.5rem; margin:0.75rem 0;',
+    pre: 'margin:1rem 0; padding:0; border-radius:4px; background:#f7f6f3; overflow-x:auto; overflow-y:hidden;',
+    preCode: 'color:#37352f; padding:0.85rem 1rem; font-family:ui-monospace,SFMono-Regular,monospace; font-size:0.85rem; line-height:1.6; display:block;',
+    ul: 'padding-left:1.5rem; margin:0.75rem 0; list-style-type:disc;',
+    ol: 'padding-left:1.5rem; margin:0.75rem 0; list-style-type:decimal;',
     li: 'margin:0.3rem 0; line-height:1.65;',
     table: 'border-collapse:collapse; width:100%; margin:1rem 0; font-size:0.95em;',
     th: 'border-bottom:1.5px solid #37352f; padding:0.4rem 0.6rem; text-align:left; font-weight:600;',
@@ -279,10 +283,10 @@ export const THEME_PROFILES: Record<PreviewTheme, ThemeProfile> = {
     p: 'margin:0.75em 0; line-height:1.6;',
     blockquote: 'border-left:4px solid #d0d7de; padding:0 1em; margin:1em 0; color:#59636e;',
     code: 'background:rgba(175,184,193,0.2); padding:0.2em 0.4em; border-radius:6px; font-size:85%; font-family:ui-monospace,SFMono-Regular,monospace;',
-    pre: 'margin:1em 0; padding:0; border-radius:6px; background:#f6f8fa; overflow:hidden;',
-    preCode: 'color:#1f2328; padding:1em 1.25em; font-family:ui-monospace,SFMono-Regular,monospace; font-size:0.875em; line-height:1.45; display:block; overflow-x:auto;',
-    ul: 'padding-left:2em; margin:0.75em 0;',
-    ol: 'padding-left:2em; margin:0.75em 0;',
+    pre: 'margin:1em 0; padding:0; border-radius:6px; background:#f6f8fa; overflow-x:auto; overflow-y:hidden;',
+    preCode: 'color:#1f2328; padding:1em 1.25em; font-family:ui-monospace,SFMono-Regular,monospace; font-size:0.875em; line-height:1.45; display:block;',
+    ul: 'padding-left:2em; margin:0.75em 0; list-style-type:disc;',
+    ol: 'padding-left:2em; margin:0.75em 0; list-style-type:decimal;',
     li: 'margin:0.25em 0;',
     table: 'border-collapse:collapse; width:100%; margin:1em 0; font-size:0.95em;',
     th: 'border:1px solid #d0d7de; padding:0.5em 0.75em; text-align:left; background:#f6f8fa; font-weight:600;',
@@ -315,10 +319,10 @@ export const THEME_PROFILES: Record<PreviewTheme, ThemeProfile> = {
     p: 'margin:1rem 0; line-height:1.8;',
     blockquote: 'border-left:4px solid #7dd3fc; padding:0.6rem 1rem; margin:1.25rem 0; background-color:rgba(125,211,252,0.08); border-radius:0 8px 8px 0; color:#cbd5e1;',
     code: 'background:#0f172a; color:#7dd3fc; padding:0.15rem 0.45rem; border-radius:4px; font-size:0.875em; font-family:ui-monospace,monospace; border:1px solid #1e293b;',
-    pre: 'margin:1.25rem 0; padding:0; border-radius:8px; background:#0f172a; overflow:hidden;',
-    preCode: 'color:#e2e8f0; padding:1rem 1.25rem; font-family:ui-monospace,monospace; font-size:0.875rem; line-height:1.65; display:block; overflow-x:auto;',
-    ul: 'padding-left:1.75rem; margin:1rem 0;',
-    ol: 'padding-left:1.75rem; margin:1rem 0;',
+    pre: 'margin:1.25rem 0; padding:0; border-radius:8px; background:#0f172a; overflow-x:auto; overflow-y:hidden;',
+    preCode: 'color:#e2e8f0; padding:1rem 1.25rem; font-family:ui-monospace,monospace; font-size:0.875rem; line-height:1.65; display:block;',
+    ul: 'padding-left:1.75rem; margin:1rem 0; list-style-type:disc;',
+    ol: 'padding-left:1.75rem; margin:1rem 0; list-style-type:decimal;',
     li: 'margin:0.4rem 0; line-height:1.75;',
     table: 'border-collapse:collapse; width:100%; margin:1rem 0; border:1px solid #1e293b; font-size:0.95em;',
     th: 'border:1px solid #1e293b; padding:0.6rem 0.85rem; text-align:left; background-color:#1e293b; color:#7dd3fc; font-weight:600; text-transform:uppercase; font-size:0.85em; letter-spacing:0.05em;',
@@ -351,10 +355,10 @@ export const THEME_PROFILES: Record<PreviewTheme, ThemeProfile> = {
     p: 'margin:0.85rem 0; line-height:1.7;',
     blockquote: 'border-left:3px dashed #00ff88; padding:0.5rem 0 0.5rem 1rem; margin:1.25rem 0; background:rgba(0,255,136,0.04); color:#00ff88;',
     code: 'background:#000; color:#ffcc00; padding:0.1rem 0.4rem; border:1px solid #1a1a1a; font-size:0.875em; font-family:ui-monospace,monospace;',
-    pre: 'margin:1.25rem 0; padding:0; background:#000; border:1px dashed #00ff88; overflow:hidden;',
-    preCode: 'color:#00ff88; padding:0.85rem 1.1rem; font-family:ui-monospace,monospace; font-size:0.85rem; line-height:1.55; display:block; overflow-x:auto;',
-    ul: 'padding-left:1.5rem; margin:0.85rem 0;',
-    ol: 'padding-left:1.5rem; margin:0.85rem 0;',
+    pre: 'margin:1.25rem 0; padding:0; background:#000; border:1px dashed #00ff88; overflow-x:auto; overflow-y:hidden;',
+    preCode: 'color:#00ff88; padding:0.85rem 1.1rem; font-family:ui-monospace,monospace; font-size:0.85rem; line-height:1.55; display:block;',
+    ul: 'padding-left:1.5rem; margin:0.85rem 0; list-style-type:disc;',
+    ol: 'padding-left:1.5rem; margin:0.85rem 0; list-style-type:decimal;',
     li: 'margin:0.3rem 0; line-height:1.65;',
     table: 'border-collapse:collapse; width:100%; margin:1rem 0; border:1px solid #00ff88; font-size:0.9em;',
     th: 'border:1px solid #00ff88; padding:0.5rem 0.75rem; text-align:left; background:#000; color:#ffcc00; font-weight:700; text-transform:uppercase;',
@@ -387,10 +391,10 @@ export const THEME_PROFILES: Record<PreviewTheme, ThemeProfile> = {
     p: 'margin:0.9rem 0; line-height:1.85;',
     blockquote: 'border-left:5px solid #e85d4e; padding:0.7rem 1rem 0.7rem 1.2rem; margin:1.25rem 0; background-color:#fff7ed; border-radius:0 12px 12px 0; font-style:italic; color:#4a2c2a;',
     code: 'background-color:#fff7ed; color:#c2410c; padding:0.15rem 0.45rem; border-radius:6px; font-size:0.875em; font-family:ui-monospace,monospace; border:1px solid #fed7aa;',
-    pre: 'margin:1.25rem 0; padding:0; border-radius:10px; background:#fff7ed; overflow:hidden;',
-    preCode: 'color:#4a2c2a; padding:1rem 1.25rem; font-family:ui-monospace,monospace; font-size:0.875rem; line-height:1.65; display:block; overflow-x:auto;',
-    ul: 'padding-left:1.75rem; margin:1rem 0;',
-    ol: 'padding-left:1.75rem; margin:1rem 0;',
+    pre: 'margin:1.25rem 0; padding:0; border-radius:10px; background:#fff7ed; overflow-x:auto; overflow-y:hidden;',
+    preCode: 'color:#4a2c2a; padding:1rem 1.25rem; font-family:ui-monospace,monospace; font-size:0.875rem; line-height:1.65; display:block;',
+    ul: 'padding-left:1.75rem; margin:1rem 0; list-style-type:disc;',
+    ol: 'padding-left:1.75rem; margin:1rem 0; list-style-type:decimal;',
     li: 'margin:0.4rem 0; line-height:1.8;',
     table: 'border-collapse:separate; border-spacing:0; width:100%; margin:1rem 0; border:1.5px solid #fed7aa; border-radius:10px; overflow:hidden; font-size:0.95em;',
     th: 'border-bottom:1.5px solid #fed7aa; padding:0.6rem 0.85rem; text-align:left; background-color:#fed7aa; color:#c2410c; font-weight:700;',
@@ -423,10 +427,10 @@ export const THEME_PROFILES: Record<PreviewTheme, ThemeProfile> = {
     p: 'margin:0.9rem 0; line-height:1.85;',
     blockquote: 'border-left:4px solid #a78bfa; padding:0.7rem 1rem; margin:1.25rem 0; background-color:rgba(167,139,250,0.08); border-radius:0 8px 8px 0; color:#cbd5e1;',
     code: 'background:#020617; color:#67e8f9; padding:0.15rem 0.45rem; border-radius:4px; font-size:0.875em; font-family:ui-monospace,monospace; border:1px solid #1e293b;',
-    pre: 'margin:1.25rem 0; padding:0; border-radius:8px; background:#020617; overflow:hidden;',
-    preCode: 'color:#cbd5e1; padding:1rem 1.25rem; font-family:ui-monospace,monospace; font-size:0.875rem; line-height:1.65; display:block; overflow-x:auto;',
-    ul: 'padding-left:1.75rem; margin:1rem 0;',
-    ol: 'padding-left:1.75rem; margin:1rem 0;',
+    pre: 'margin:1.25rem 0; padding:0; border-radius:8px; background:#020617; overflow-x:auto; overflow-y:hidden;',
+    preCode: 'color:#cbd5e1; padding:1rem 1.25rem; font-family:ui-monospace,monospace; font-size:0.875rem; line-height:1.65; display:block;',
+    ul: 'padding-left:1.75rem; margin:1rem 0; list-style-type:disc;',
+    ol: 'padding-left:1.75rem; margin:1rem 0; list-style-type:decimal;',
     li: 'margin:0.4rem 0; line-height:1.8;',
     table: 'border-collapse:collapse; width:100%; margin:1rem 0; border:1px solid #1e293b; font-size:0.95em;',
     th: 'border:1px solid #1e293b; padding:0.6rem 0.85rem; text-align:left; background-color:#1e293b; color:#a78bfa; font-weight:600;',
@@ -459,10 +463,10 @@ export const THEME_PROFILES: Record<PreviewTheme, ThemeProfile> = {
     p: 'margin:0.9rem 0; line-height:1.85; text-align:justify; text-indent:2em;',
     blockquote: 'border-left:3px double #1e40af; padding:0.5rem 0 0.5rem 1.25rem; margin:1.5rem 1.5rem 1.5rem 1.5rem; font-family:Georgia,serif; font-style:italic; color:#1a1a1a; background:rgba(30,64,175,0.03);',
     code: 'font-family:"Courier New",Consolas,monospace; background:#faf8f3; color:#1e40af; padding:0.1rem 0.4rem; border-radius:2px; font-size:0.9em; border:1px solid #d6cfbf;',
-    pre: 'margin:1.5rem 0; padding:0; border-radius:6px; background:#faf8f3; overflow:hidden;',
-    preCode: 'color:#1a1a1a; padding:0.9rem 1.1rem; font-family:"Courier New",Consolas,monospace; font-size:0.875rem; line-height:1.65; display:block; overflow-x:auto;',
-    ul: 'padding-left:2rem; margin:0.9rem 0;',
-    ol: 'padding-left:2rem; margin:0.9rem 0;',
+    pre: 'margin:1.5rem 0; padding:0; border-radius:6px; background:#faf8f3; overflow-x:auto; overflow-y:hidden;',
+    preCode: 'color:#1a1a1a; padding:0.9rem 1.1rem; font-family:"Courier New",Consolas,monospace; font-size:0.875rem; line-height:1.65; display:block;',
+    ul: 'padding-left:2rem; margin:0.9rem 0; list-style-type:disc;',
+    ol: 'padding-left:2rem; margin:0.9rem 0; list-style-type:decimal;',
     li: 'margin:0.35rem 0; line-height:1.75;',
     table: 'border-collapse:collapse; width:100%; margin:1.5rem 0; border-top:2px solid #1a1a1a; border-bottom:2px solid #1a1a1a; font-family:Georgia,serif; font-size:0.95em;',
     th: 'border-top:1px solid #1a1a1a; border-bottom:1px solid #1a1a1a; padding:0.5rem 0.75rem; text-align:left; font-weight:700; background:rgba(30,64,175,0.05);',
