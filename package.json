@@ -9,7 +9,6 @@
     "lint": "next lint",
     "db:generate": "drizzle-kit generate",
     "db:migrate": "tsx src/lib/db/migrate.ts",
-    "db:sync-prompts": "tsx scripts/sync-prompts.ts",
     "cli": "bun run bin/cli.ts",
     "cli:dev": "concurrently -n next,cli -c blue,green \"npm run dev\" \"sleep 5 && bun run bin/cli.ts\"",
     "bun:dev": "bun run dev",

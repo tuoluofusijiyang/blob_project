@@ -4,6 +4,18 @@ import { getTextProvider, getImageProvider } from '@/lib/ai/factory';
 import { renderTemplate, extractJson } from './template';
 import { mkdir, writeFile } from 'fs/promises';
 import { join } from 'path';
+import { ALL_CATEGORIES, type CategoryPrompts } from '@/prompts/categories';
+
+// 根据 categoryId 查 slug，从代码里的 ALL_CATEGORIES 取 prompt 模板
+// prompt 模板直接走代码（不用 DB），改完保存即生效
+function getCategoryPrompts(categoryId: number): { category: typeof schema.categories.$inferSelect; prompts: CategoryPrompts } {
+  const db = getDb();
+  const category = db.select().from(schema.categories).where(eq(schema.categories.id, categoryId)).get();
+  if (!category) throw new Error(`Category not found: ${categoryId}`);
+  const catConfig = ALL_CATEGORIES.find((c) => c.slug === category.slug);
+  if (!catConfig) throw new Error(`Prompt config not found for category slug: ${category.slug}`);
+  return { category, prompts: catConfig.prompts };
+}
 
 export interface OutlineParams {
   categoryId: number;
@@ -18,18 +30,11 @@ export interface OutlineParams {
 }
 
 export async function* generateOutline(params: OutlineParams) {
-  const db = getDb();
-  const category = db.select().from(schema.categories).where(eq(schema.categories.id, params.categoryId)).get();
-  if (!category) throw new Error('Category not found');
-
-  const template = db.select().from(schema.promptTemplates)
-    .where(eq(schema.promptTemplates.categoryId, params.categoryId))
-    .all()
-    .find((t) => t.templateType === 'outline');
-  if (!template) throw new Error('Outline template not found');
+  const { category, prompts } = getCategoryPrompts(params.categoryId);
+  const template = prompts.outline;
 
   const systemPrompt = `你是一名专业的内容创作者，擅长生成结构化大纲。`;
-  const userPrompt = renderTemplate(template.template, {
+  const userPrompt = renderTemplate(template, {
     topic: params.topic,
     keywords: (params.keywords || []).join('、'),
     wordCount: String(params.wordCount),
@@ -111,17 +116,9 @@ function parseMarkdownStructure(md: string): { title: string; outline: ArticleFu
 }
 
 export async function generateArticleFull(params: ArticleParams): Promise<ArticleFullResult> {
-  const db = getDb();
-
-  const template = db.select().from(schema.promptTemplates)
-    .where(eq(schema.promptTemplates.categoryId, params.categoryId))
-    .all()
-    .find((t) => t.templateType === 'article');
-  if (!template) throw new Error('Article template not found');
-
-  const category = db.select().from(schema.categories)
-    .where(eq(schema.categories.id, params.categoryId)).get();
-  const categoryName = category?.name || '该领域';
+  const { category, prompts } = getCategoryPrompts(params.categoryId);
+  const template = prompts.article;
+  const categoryName = category.name;
 
   const hasTopic = !!params.topic?.trim();
   const topicValue = hasTopic
@@ -133,7 +130,7 @@ export async function generateArticleFull(params: ArticleParams): Promise<Articl
     : '\n\n【文末风格 - 严格执行】\n- 严禁在文末使用互动套话：「请在评论区告诉我答案」「评论区见」「期待你的回复」「点赞关注」「更多精彩下期分享」等\n- 直接用最后一个观点或一句话收尾，自然结束\n- 收尾要和全文融为一体，不另起突兀的呼吁';
 
   const systemPrompt = `你是一名专业的内容创作者，严格按用户要求的 JSON 格式输出。`;
-  const userPrompt = renderTemplate(template.template, {
+  const userPrompt = renderTemplate(template, {
     topic: topicValue,
     keywords: (params.keywords || []).join('、'),
     keywords_block: params.keywords?.length
@@ -209,16 +206,11 @@ export async function generateArticleFull(params: ArticleParams): Promise<Articl
 }
 
 export async function* generateArticle(params: ArticleParams) {
-  const db = getDb();
-
-  const template = db.select().from(schema.promptTemplates)
-    .where(eq(schema.promptTemplates.categoryId, params.categoryId))
-    .all()
-    .find((t) => t.templateType === 'article');
-  if (!template) throw new Error('Article template not found');
+  const { prompts } = getCategoryPrompts(params.categoryId);
+  const template = prompts.article;
 
   const systemPrompt = `你是一名专业的内容创作者，写出吸引人的完整文章。`;
-  const userPrompt = renderTemplate(template.template, {
+  const userPrompt = renderTemplate(template, {
     topic: params.topic,
     wordCount: String(params.wordCount),
     platform: params.platform,
@@ -254,6 +246,7 @@ export async function* generateArticle(params: ArticleParams) {
 
   // 保存草稿
   if (params.draftId) {
+    const db = getDb();
     db.update(schema.drafts)
       .set({
         title,

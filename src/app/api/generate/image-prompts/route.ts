@@ -5,6 +5,7 @@ import { getDb, schema } from '@/lib/db/client';
 import { eq } from 'drizzle-orm';
 import { getTextProvider } from '@/lib/ai/factory';
 import { renderTemplate, extractJson } from '@/lib/generate/template';
+import { ALL_CATEGORIES } from '@/prompts/categories';
 
 const Schema = z.object({
   categoryId: z.number().int().positive(),
@@ -22,14 +23,14 @@ export async function POST(req: NextRequest) {
     const data = Schema.parse(body);
 
     const db = getDb();
-    const template = db.select().from(schema.promptTemplates)
-      .where(eq(schema.promptTemplates.categoryId, data.categoryId))
-      .all()
-      .find((t) => t.templateType === 'imagePrompt');
-    if (!template) return NextResponse.json({ error: 'image-prompt template not found' }, { status: 404 });
+    const category = db.select().from(schema.categories).where(eq(schema.categories.id, data.categoryId)).get();
+    if (!category) return NextResponse.json({ error: 'Category not found' }, { status: 404 });
+    const catConfig = ALL_CATEGORIES.find((c) => c.slug === category.slug);
+    if (!catConfig) return NextResponse.json({ error: `Prompt config not found for slug: ${category.slug}` }, { status: 404 });
+    const template = catConfig.prompts.imagePrompt;
 
     const systemPrompt = '你是 AI 图像生成提示词专家。';
-    const userPrompt = renderTemplate(template.template, {
+    const userPrompt = renderTemplate(template, {
       topic: data.topic,
       count: String(data.count),
     });

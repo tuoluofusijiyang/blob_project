@@ -52,16 +52,6 @@ export const categories = sqliteTable('categories', {
   enabled: integer('enabled').notNull().default(1),
 });
 
-export const promptTemplates = sqliteTable('prompt_templates', {
-  id: integer('id').primaryKey({ autoIncrement: true }),
-  categoryId: integer('category_id').notNull().references(() => categories.id, { onDelete: 'cascade' }),
-  templateType: text('template_type').notNull(),
-  name: text('name').notNull(),
-  template: text('template').notNull(),
-  variables: text('variables'),
-  isBuiltin: integer('is_builtin').notNull().default(0),
-});
-
 export const drafts = sqliteTable('drafts', {
   id: integer('id').primaryKey({ autoIncrement: true }),
   userId: integer('user_id').notNull().references(() => users.id, { onDelete: 'cascade' }),

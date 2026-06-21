@@ -2,6 +2,8 @@ import { getDb, schema } from './client';
 import { eq } from 'drizzle-orm';
 import { ALL_CATEGORIES } from '@/prompts/categories';
 
+// seedBuiltinData 只负责把分类同步到 DB
+// prompt 模板直接在代码里（ALL_CATEGORIES），不存 DB
 export async function seedBuiltinData() {
   const db = getDb();
 
@@ -10,40 +12,17 @@ export async function seedBuiltinData() {
       .where(eq(schema.categories.slug, cat.slug))
       .get();
 
-    let categoryId: number;
+    if (existing) continue;
 
-    if (existing) {
-      categoryId = existing.id;
-    } else {
-      const inserted = db.insert(schema.categories).values({
-        slug: cat.slug,
-        name: cat.name,
-        icon: cat.icon,
-        description: cat.description,
-        isBuiltin: 1,
-        userId: null,
-        sortOrder: ALL_CATEGORIES.indexOf(cat),
-      }).returning().get();
-      categoryId = inserted.id;
-    }
-
-    // 检查是否已有提示词模板
-    const existingTemplates = db.select().from(schema.promptTemplates)
-      .where(eq(schema.promptTemplates.categoryId, categoryId))
-      .all();
-
-    const existingTypes = new Set(existingTemplates.map((t) => t.templateType));
-
-    for (const [type, template] of Object.entries(cat.prompts)) {
-      if (existingTypes.has(type)) continue;
-      db.insert(schema.promptTemplates).values({
-        categoryId,
-        templateType: type,
-        name: type,
-        template,
-        isBuiltin: 1,
-      }).run();
-    }
+    db.insert(schema.categories).values({
+      slug: cat.slug,
+      name: cat.name,
+      icon: cat.icon,
+      description: cat.description,
+      isBuiltin: 1,
+      userId: null,
+      sortOrder: ALL_CATEGORIES.indexOf(cat),
+    }).run();
   }
 }
 

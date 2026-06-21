@@ -479,7 +479,13 @@ ${COMMON_ARTICLE_STYLE}
 JSON 输出：["prompt1", ...]`,
 };
 
-export const ALL_CATEGORIES = [
+export const ALL_CATEGORIES: Array<{
+  slug: string;
+  name: string;
+  icon: string;
+  description: string;
+  prompts: CategoryPrompts;
+}> = [
   { slug: 'ai', name: 'AI 与科技', icon: '🤖', description: 'AI 技术、应用、行业动态', prompts: aiPrompts },
   { slug: 'tech', name: '程序员向', icon: '💻', description: '技术教程、工具、编程实践', prompts: techPrompts },
   { slug: 'mom-baby', name: '母婴育儿', icon: '👶', description: '育儿经验、母婴用品、早教', prompts: momBabyPrompts },
