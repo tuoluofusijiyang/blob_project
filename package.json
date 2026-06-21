@@ -1,0 +1,51 @@
+{
+  "name": "content-tools",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --turbopack",
+    "build": "next build",
+    "start": "next start -p 7842",
+    "lint": "next lint",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/lib/db/migrate.ts",
+    "cli": "bun run bin/cli.ts",
+    "cli:dev": "concurrently -n next,cli -c blue,green \"npm run dev\" \"sleep 5 && bun run bin/cli.ts\"",
+    "bun:dev": "bun run dev",
+    "bun:cli": "bun run bin/cli.ts"
+  },
+  "dependencies": {
+    "@radix-ui/react-label": "^2.1.0",
+    "@radix-ui/react-slot": "^1.1.0",
+    "argon2": "^0.41.1",
+    "better-sqlite3": "^11.5.0",
+    "class-variance-authority": "^0.7.0",
+    "clsx": "^2.1.1",
+    "drizzle-orm": "^0.36.0",
+    "highlight.js": "^11.11.1",
+    "keytar": "^7.9.0",
+    "lucide-react": "^0.460.0",
+    "marked": "^18.0.5",
+    "marked-highlight": "^2.2.4",
+    "next": "^15.0.0",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "tailwind-merge": "^2.5.4",
+    "tailwindcss-animate": "^1.0.7",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "@tailwindcss/typography": "^0.5.15",
+    "@types/better-sqlite3": "^7.6.11",
+    "@types/node": "^22.0.0",
+    "@types/react": "^19.0.0",
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.0",
+    "drizzle-kit": "^0.28.0",
+    "open": "^10.1.0",
+    "postcss": "^8.4.49",
+    "tailwindcss": "^3.4.14",
+    "tsx": "^4.19.2",
+    "typescript": "^5.6.0"
+  }
+}
