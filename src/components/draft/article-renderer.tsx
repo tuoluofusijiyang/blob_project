@@ -45,8 +45,18 @@ marked.use(
   markedHighlight({
     langPrefix: 'hljs language-',
     highlight(code, lang) {
-      const language = hljs.getLanguage(lang) ? lang : 'plaintext';
-      return hljs.highlight(code, { language }).value;
+      try {
+        if (lang && hljs.getLanguage(lang)) {
+          return hljs.highlight(code, { language: lang, ignoreIllegals: true }).value;
+        }
+        return hljs.highlightAuto(code).value;
+      } catch {
+        // 极端兜底：原样转义后返回，绝不让单个代码块炸掉整篇文章
+        return code
+          .replace(/&/g, '&amp;')
+          .replace(/</g, '&lt;')
+          .replace(/>/g, '&gt;');
+      }
     },
   })
 );
