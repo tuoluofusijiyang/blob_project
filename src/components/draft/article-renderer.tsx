@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useEffect, useMemo, useRef } from 'react';
 import { Marked } from 'marked';
 import { markedHighlight } from 'marked-highlight';
 import hljs from 'highlight.js/lib/core';
@@ -586,20 +586,63 @@ interface Props {
   markdown: string;
   theme: PreviewTheme;
   platformStyle?: string;
+  onRegenerateImage?: (draftImageId: number) => void;
+  onDeleteImage?: (draftImageId: number) => void;
 }
 
-export function ArticleRenderer({ markdown, theme, platformStyle }: Props) {
+export function ArticleRenderer({ markdown, theme, platformStyle, onRegenerateImage, onDeleteImage }: Props) {
   const t = THEME_PROFILES[theme];
+  const articleRef = useRef<HTMLElement>(null);
+
+  // 预处理：把 [[IMG: xxx]] 替换为占位符 div（marked 会渲染成普通文本，我们需要在它之前拦截）
+  const preprocessed = useMemo(() => {
+    const md = markdown || '';
+    return md.replace(/\[\[IMG:([^\]]+)\]\]/g, (_match, prompt) => {
+      const escaped = prompt.replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return `<div class="img-pending-placeholder" data-img-prompt="${escaped}">📷 待生成图片：${escaped}</div>`;
+    });
+  }, [markdown]);
 
   const html = useMemo(() => {
     try {
-      const raw = marked.parse(markdown || '', { async: false }) as string;
+      const raw = marked.parse(preprocessed, { async: false }) as string;
+      // 把 <img alt="image-N" src="data:image/png;base64,..."> 包成图片卡片（含操作按钮）
+      const withCards = raw.replace(
+        /<img src="data:image\/png;base64,([^"]+)" alt="image-(\d+)"([^>]*)>/g,
+        (_m, _base64, id, rest) =>
+          `<div class="inline-image-card" data-draft-image-id="${id}">` +
+            `<img src="data:image/png;base64,${_base64}" alt="image-${id}"${rest}>` +
+            `<div class="inline-image-actions">` +
+              `<button type="button" class="img-action-btn img-regenerate" data-draft-image-id="${id}">↻ 重新生成</button>` +
+              `<button type="button" class="img-action-btn img-delete" data-draft-image-id="${id}">× 删除</button>` +
+            `</div>` +
+          `</div>`
+      );
       // marked 会在代码块结尾追加一个 \n，导致渲染时多出空行；这里去掉
-      return raw.replace(/(<pre><code[^>]*>[\s\S]*?)\s+<\/code><\/pre>/g, '$1</code></pre>');
+      return withCards.replace(/(<pre><code[^>]*>[\s\S]*?)\s+<\/code><\/pre>/g, '$1</code></pre>');
     } catch {
       return '';
     }
-  }, [markdown]);
+  }, [preprocessed]);
+
+  // 事件委托：处理图片卡片的重新生成/删除按钮
+  useEffect(() => {
+    if (!articleRef.current) return;
+    const el = articleRef.current;
+    function handleClick(e: MouseEvent) {
+      const target = e.target as HTMLElement;
+      if (!target) return;
+      if (target.classList.contains('img-regenerate')) {
+        const id = Number(target.dataset.draftImageId);
+        if (id && onRegenerateImage) onRegenerateImage(id);
+      } else if (target.classList.contains('img-delete')) {
+        const id = Number(target.dataset.draftImageId);
+        if (id && onDeleteImage) onDeleteImage(id);
+      }
+    }
+    el.addEventListener('click', handleClick);
+    return () => el.removeEventListener('click', handleClick);
+  }, [onRegenerateImage, onDeleteImage, html]);
 
   // 生成主题专属 CSS：完全替换基础样式，确保每个 markdown 元素在不同主题下视觉差异巨大
   const themeCSS = useMemo(() => {
@@ -635,8 +678,62 @@ export function ArticleRenderer({ markdown, theme, platformStyle }: Props) {
   return (
     <>
       <style>{HLJS_THEMES[t.codeTheme]}</style>
+      <style>{`
+        .img-pending-placeholder {
+          display: block;
+          margin: 1.5rem 0;
+          padding: 0.9rem 1rem;
+          border: 1.5px dashed currentColor;
+          border-radius: 8px;
+          opacity: 0.7;
+          font-size: 0.85rem;
+          line-height: 1.55;
+        }
+        .inline-image-card {
+          position: relative;
+          display: block;
+          margin: 1.5rem 0;
+        }
+        .inline-image-card > img {
+          display: block;
+          max-width: 100%;
+          height: auto;
+          border-radius: 8px;
+        }
+        .inline-image-actions {
+          position: absolute;
+          top: 8px;
+          right: 8px;
+          display: none;
+          gap: 4px;
+          background: rgba(0,0,0,0.65);
+          border-radius: 6px;
+          padding: 3px;
+          backdrop-filter: blur(4px);
+        }
+        .inline-image-card:hover .inline-image-actions {
+          display: flex;
+        }
+        .img-action-btn {
+          background: transparent;
+          color: white;
+          border: 0;
+          padding: 4px 8px;
+          font-size: 12px;
+          border-radius: 4px;
+          cursor: pointer;
+          white-space: nowrap;
+        }
+        .img-action-btn:hover {
+          background: rgba(255,255,255,0.2);
+        }
+        .img-action-btn.img-delete:hover {
+          background: rgba(255,80,80,0.4);
+        }
+      `}</style>
       <div className={cn('overflow-auto h-full p-8', t.wrapperBg)}>
         <article
+          ref={articleRef}
           className={cn('article-body max-w-3xl mx-auto rounded-lg p-10', t.articleBg, t.fg)}
           data-style={theme}
           dangerouslySetInnerHTML={{ __html: html }}

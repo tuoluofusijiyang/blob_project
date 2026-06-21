@@ -10,6 +10,14 @@ import { useRouter } from 'next/navigation';
 import { MarkdownEditor, type MarkdownTheme } from '@/components/generate/markdown-editor';
 import { ArticleRenderer, type PreviewTheme, THEME_PROFILES } from './article-renderer';
 import { cn } from '@/lib/utils';
+import {
+  extractImageTags,
+  replaceImageTag,
+  buildInlineImageMarkdown,
+  replaceImageByDraftId,
+  restoreImageTag,
+  type ImageTag,
+} from '@/lib/content/inline-images';
 
 interface Draft {
   id: number;
